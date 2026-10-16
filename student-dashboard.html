@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Maklumat Pelajar</title>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f0f4f8;
+      color: #1f2328;
+      min-height: 100vh;
+      padding: 24px 16px 40px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 24px;
+      color: #1a237e;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── BORANG ── */
+    .form-card {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 24px 28px;
+      max-width: 860px;
+      margin: 0 auto 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+
+    .form-card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #1565C0;
+      border-bottom: 2px solid #1565C0;
+      padding-bottom: 8px;
+      margin-bottom: 18px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group label { font-size: 0.82rem; font-weight: 600; color: #444; }
+
+    .form-group input[type="text"],
+    .form-group select {
+      padding: 8px 10px;
+      border: 1px solid #ccc;
+      border-radius: 7px;
+      font-size: 0.9rem;
+      background: #fafafa;
+      transition: border-color 0.2s;
+    }
+    .form-group input[type="text"]:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #1565C0;
+      background: #fff;
+    }
+
+    .radio-group { display: flex; gap: 14px; align-items: center; padding-top: 4px; }
+    .radio-group label { font-size: 0.88rem; font-weight: 400; color: #333; display: flex; align-items: center; gap: 5px; }
+
+    .btn-add {
+      margin-top: 18px;
+      padding: 10px 28px;
+      background: #1565C0;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-add:hover { background: #0d47a1; }
+
+    .btn-download {
+      display: block;
+      margin: 0 auto 28px;
+      padding: 10px 30px;
+      background: #2E7D32;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-download:hover { background: #1b5e20; }
+
+    /* ── GRID PANEL ── */
+    .panels-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 620px) {
+      .panels-grid { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e0e0e0;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      padding: 12px 16px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.3px;
+    }
+
+    .panel-body { padding: 14px 16px; flex: 1; }
+
+    /* Senarai Nama */
+    .panel-header.blue  { background: #1565C0; }
+    .panel-header.green { background: #2E7D32; }
+    .panel-header.purple{ background: #6A1B9A; }
+    .panel-header.orange{ background: #E65100; }
+
+    #name-list {
+      list-style: decimal;
+      padding-left: 20px;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+    #name-list li {
+      background: #E3F2FD;
+      margin-bottom: 6px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      color: #0d47a1;
+      font-weight: 500;
+    }
+
+    .empty-msg {
+      font-size: 0.85rem;
+      color: #999;
+      font-style: italic;
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    canvas { display: block; width: 100% !important; height: 220px !important; }
+
+    /* Legend */
+    .legend { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; color: #444; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<h1>📋 Dashboard Maklumat Pelajar</h1>
+
+<!-- BORANG -->
+<div class="form-card">
+  <h2>Tambah Maklumat Pelajar</h2>
+  <div class="form-grid">
+    <div class="form-group">
+      <label for="inp-nama">Nama Penuh</label>
+      <input type="text" id="inp-nama" placeholder="Contoh: Ahmad bin Ali" />
+    </div>
+    <div class="form-group">
+      <label for="inp-asal">Negeri Asal</label>
+      <select id="inp-asal">
+        <option value="">-- Pilih Negeri --</option>
+        <option>Johor</option>
+        <option>Kedah</option>
+        <option>Kelantan</option>
+        <option>Melaka</option>
+        <option>Negeri Sembilan</option>
+        <option>Pahang</option>
+        <option>Pulau Pinang</option>
+        <option>Perak</option>
+        <option>Perlis</option>
+        <option>Sabah</option>
+        <option>Sarawak</option>
+        <option>Selangor</option>
+        <option>Terengganu</option>
+        <option>W.P. Kuala Lumpur</option>
+        <option>W.P. Labuan</option>
+        <option>W.P. Putrajaya</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Jantina</label>
+      <div class="radio-group">
+        <label><input type="radio" name="jantina" value="Lelaki" checked /> Lelaki</label>
+        <label><input type="radio" name="jantina" value="Perempuan" /> Perempuan</label>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="inp-bangsa">Bangsa</label>
+      <select id="inp-bangsa">
+        <option value="">-- Pilih Bangsa --</option>
+        <option>Melayu</option>
+        <option>Cina</option>
+        <option>India</option>
+        <option>Lain-lain</option>
+      </select>
+    </div>
+  </div>
+  <button class="btn-add" onclick="tambahPelajar()">+ Tambah Pelajar</button>
+</div>
+
+<!-- BUTANG MUAT TURUN -->
+<button class="btn-download" onclick="muatTurunExcel()">⬇ Muat Turun Excel</button>
+
+<!-- PANEL GRID -->
+<div class="panels-grid">
+
+  <!-- Panel 1: Senarai Nama -->
+  <div class="panel">
+    <div class="panel-header blue">👤 Senarai Nama Pelajar</div>
+    <div class="panel-body">
+      <ol id="name-list"></ol>
+      <p class="empty-msg" id="nama-empty">Tiada pelajar ditambah lagi.</p>
+    </div>
+  </div>
+
+  <!-- Panel 2: Asal -->
+  <div class="panel">
+    <div class="panel-header green">🗺 Agihan Negeri Asal (%)</div>
+    <div class="panel-body">
+      <canvas id="canvas-asal"></canvas>
+      <p class="empty-msg" id="asal-empty">Tiada data lagi.</p>
+      <div class="legend" id="legend-asal"></div>
+    </div>
+  </div>
+
+  <!-- Panel 3: Jantina -->
+  <div class="panel">
+    <div class="panel-header purple">⚥ Agihan Jantina (%)</div>
+    <div class="panel-body">
+      <canvas id="canvas-jantina"></canvas>
+      <p class="empty-msg" id="jantina-empty">Tiada data lagi.</p>
+      <div class="legend" id="legend-jantina"></div>
+    </div>
+  </div>
+
+  <!-- Panel 4: Bangsa -->
+  <div class="panel">
+    <div class="panel-header orange">🌏 Agihan Bangsa (%)</div>
+    <div class="panel-body">
+      <canvas id="canvas-bangsa"></canvas>
+      <p class="empty-msg" id="bangsa-empty">Tiada data lagi.</p>
+      <div class="legend" id="legend-bangsa"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  /* ───────────────────────────────────────────────
+     DATA STORE
+  ─────────────────────────────────────────────── */
+  const pelajar = [];
+
+  /* ───────────────────────────────────────────────
+     WARNA TEMA
+  ─────────────────────────────────────────────── */
+  const WARNA_ASAL = [
+    '#1B5E20','#2E7D32','#388E3C','#43A047','#4CAF50',
+    '#66BB6A','#81C784','#A5D6A7','#C8E6C9','#E8F5E9',
+    '#00695C','#00796B','#00897B','#4DB6AC','#80CBC4',
+    '#006064','#00838F'
+  ];
+
+  const WARNA_JANTINA = ['#6A1B9A','#CE93D8'];
+
+  const WARNA_BANGSA = ['#E65100','#FF6D00','#FF9800','#FFCC80'];
+
+  /* ───────────────────────────────────────────────
+     TAMBAH PELAJAR
+  ─────────────────────────────────────────────── */
+  function tambahPelajar() {
+    const nama   = document.getElementById('inp-nama').value.trim();
+    const asal   = document.getElementById('inp-asal').value;
+    const jantina= document.querySelector('input[name="jantina"]:checked').value;
+    const bangsa = document.getElementById('inp-bangsa').value;
+
+    if (!nama)   { alert('Sila masukkan nama pelajar.'); return; }
+    if (!asal)   { alert('Sila pilih negeri asal.'); return; }
+    if (!bangsa) { alert('Sila pilih bangsa.'); return; }
+
+    pelajar.push({ nama, asal, jantina, bangsa });
+
+    // Reset borang
+    document.getElementById('inp-nama').value = '';
+    document.getElementById('inp-asal').value = '';
+    document.getElementById('inp-bangsa').value = '';
+    document.querySelector('input[name="jantina"][value="Lelaki"]').checked = true;
+
+    kemasMasaKini();
+  }
+
+  /* ───────────────────────────────────────────────
+     KEMAS KINI SEMUA PANEL
+  ─────────────────────────────────────────────── */
+  function kemasMasaKini() {
+    renderSenarai();
+    renderCarta('asal',    hitungFrekuensi('asal'),    'canvas-asal',    'legend-asal',    'asal-empty',    WARNA_ASAL);
+    renderCarta('jantina', hitungFrekuensi('jantina'), 'canvas-jantina', 'legend-jantina', 'jantina-empty', WARNA_JANTINA);
+    renderCarta('bangsa',  hitungFrekuensi('bangsa'),  'canvas-bangsa',  'legend-bangsa',  'bangsa-empty',  WARNA_BANGSA);
+  }
+
+  /* ───────────────────────────────────────────────
+     RENDER SENARAI NAMA
+  ─────────────────────────────────────────────── */
+  function renderSenarai() {
+    const list  = document.getElementById('name-list');
+    const empty = document.getElementById('nama-empty');
+    list.innerHTML = '';
+    if (pelajar.length === 0) { empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    pelajar.forEach(p => {
+      const li = document.createElement('li');
+      li.textContent = p.nama;
+      list.appendChild(li);
+    });
+  }
+
+  /* ───────────────────────────────────────────────
+     KIRA FREKUENSI
+  ─────────────────────────────────────────────── */
+  function hitungFrekuensi(field) {
+    const freq = {};
+    pelajar.forEach(p => { freq[p[field]] = (freq[p[field]] || 0) + 1; });
+    return freq;
+  }
+
+  /* ───────────────────────────────────────────────
+     RENDER CARTA PAI (canvas)
+  ─────────────────────────────────────────────── */
+  function renderCarta(_, freq, canvasId, legendId, emptyId, warna) {
+    const emptyEl  = document.getElementById(emptyId);
+    const legendEl = document.getElementById(legendId);
+    const canvas   = document.getElementById(canvasId);
+    const keys     = Object.keys(freq);
+    const total    = Object.values(freq).reduce((a, b) => a + b, 0);
+
+    if (total === 0) {
+      emptyEl.style.display = 'block';
+      canvas.style.display  = 'none';
+      legendEl.innerHTML    = '';
+      return;
+    }
+
+    emptyEl.style.display = 'none';
+    canvas.style.display  = 'block';
+
+    // Set canvas resolution
+    const dpr = window.devicePixelRatio || 1;
+    const W   = canvas.parentElement.clientWidth - 32 || 260;
+    const H   = 220;
+    canvas.width  = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, W, H);
+
+    const cx = W / 2;
+    const cy = H / 2;
+    const r  = Math.min(cx, cy) - 24;
+
+    let startAngle = -Math.PI / 2;
+
+    keys.forEach((key, i) => {
+      const slice     = freq[key] / total;
+      const endAngle  = startAngle + slice * 2 * Math.PI;
+      const midAngle  = startAngle + slice * Math.PI;
+      const colour    = warna[i % warna.length];
+
+      // Slice
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fillStyle = colour;
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Label peratusan
+      if (slice > 0.04) {
+        const lx = cx + (r * 0.65) * Math.cos(midAngle);
+        const ly = cy + (r * 0.65) * Math.sin(midAngle);
+        ctx.fillStyle = '#fff';
+        ctx.font = `bold ${Math.max(11, Math.min(13, r * 0.2))}px Segoe UI, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(Math.round(slice * 100) + '%', lx, ly);
+      }
+
+      startAngle = endAngle;
+    });
+
+    // Legend
+    legendEl.innerHTML = '';
+    keys.forEach((key, i) => {
+      const pct  = Math.round((freq[key] / total) * 100);
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      item.innerHTML =
+        `<span class="legend-dot" style="background:${warna[i % warna.length]}"></span>` +
+        `<span>${key} — ${freq[key]} (${pct}%)</span>`;
+      legendEl.appendChild(item);
+    });
+  }
+
+  /* ───────────────────────────────────────────────
+     MUAT TURUN EXCEL
+  ─────────────────────────────────────────────── */
+  function muatTurunExcel() {
+    if (pelajar.length === 0) {
+      alert('Tiada data pelajar untuk dimuat turun.');
+      return;
+    }
+
+    const rows = [['Bil', 'Nama', 'Negeri Asal', 'Jantina', 'Bangsa']];
+    pelajar.forEach((p, i) => {
+      rows.push([i + 1, p.nama, p.asal, p.jantina, p.bangsa]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+
+    // Lebar lajur
+    ws['!cols'] = [{ wch: 5 }, { wch: 30 }, { wch: 22 }, { wch: 12 }, { wch: 15 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Senarai Pelajar');
+    XLSX.writeFile(wb, 'senarai_pelajar.xlsx');
+  }
+
+  /* ───────────────────────────────────────────────
+     ENTER key pada borang nama
+  ─────────────────────────────────────────────── */
+  document.getElementById('inp-nama').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') tambahPelajar();
+  });
+
+  // Lukis semula carta bila saiz tetingkap berubah
+  window.addEventListener('resize', kemasMasaKini);
+</script>
+</body>
+</html>
